@@ -350,4 +350,62 @@ router.get('/default-balance', async (req, res) => {
   }
 });
 
+// ============================================================
+// LEAVE BALANCE MANAGEMENT (Karen’s Functionality)
+// ============================================================
+
+const { LeaveBalance, LeaveType, User } = require('../models');
+const {
+  getEmployeeLeaveBalance,
+  updateEmployeeLeaveBalance,
+  processFinancialYearRollover
+} = require('../utils/leaveBalance');
+
+// Get all employees with their leave balances
+router.get('/employees/leave-balances', async (req, res) => {
+  try {
+    const employees = await User.findAll({
+      where: { isActive: true },
+      attributes: ['id', 'firstName', 'lastName', 'email', 'department', 'position'],
+      include: [
+        {
+          model: LeaveBalance,
+          as: 'leaveBalances',
+          include: [{ model: LeaveType, as: 'leaveType', attributes: ['name'] }],
+        },
+      ],
+    });
+
+    res.status(200).json(employees);
+  } catch (err) {
+    console.error('Error fetching leave balances:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// Update a specific employee’s leave balance
+router.put('/employees/:id/leave-balances', async (req, res) => {
+  try {
+    const employeeId = req.params.id;
+    const updates = req.body; // { leaveTypeId, newBalance }
+
+    await updateEmployeeLeaveBalance(employeeId, updates.leaveTypeId, updates.newBalance);
+
+    res.status(200).json({ message: 'Leave balance updated successfully' });
+  } catch (err) {
+    console.error('Error updating leave balance:', err);
+    res.status(500).json({ error: 'Could not update leave balance' });
+  }
+});
+
+// Rollover balances for new financial year
+router.post('/employees/rollover', async (req, res) => {
+  try {
+    const result = await processFinancialYearRollover();
+    res.status(200).json({ message: 'Rollover completed successfully', result });
+  } catch (err) {
+    console.error('Error in rollover:', err);
+    res.status(500).json({ error: 'Failed to process rollover' });
+  }
+});
 module.exports = router; 
