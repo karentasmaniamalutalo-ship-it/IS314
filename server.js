@@ -22,6 +22,9 @@ const notificationRoutes = require('./routes/notifications');
 const reportRoutes = require('./routes/reports');
 const adminRoutes = require('./routes/admin');
 const auditRoutes = require('./routes/audit');
+const leaveApprovalRoutes = require('./routes/leaveApproval');
+
+
 
 // Import seed function
 const { seedDatabase } = require('./utils/seedDatabase');
