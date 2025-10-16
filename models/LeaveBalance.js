@@ -1,6 +1,5 @@
-const { DataTypes } = require('sequelize');
-
-module.exports = (sequelize) => {
+// models/LeaveBalance.js
+module.exports = (sequelize, DataTypes) => {
   const LeaveBalance = sequelize.define('LeaveBalance', {
     id: {
       type: DataTypes.INTEGER,
@@ -9,12 +8,57 @@ module.exports = (sequelize) => {
     },
     userId: {
       type: DataTypes.INTEGER,
-      allowNull: false,
-      references: {
-        model: 'users',
-        key: 'id'
-      }
+      allowNull: false
     },
+    leaveTypeId: {
+      type: DataTypes.INTEGER,
+      allowNull: false
+    },
+    totalDays: {
+      type: DataTypes.FLOAT,
+      allowNull: false,
+      defaultValue: 0
+    },
+    remainingDays: {
+      type: DataTypes.FLOAT,
+      allowNull: false,
+      defaultValue: 0
+    },
+    year: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: new Date().getFullYear()
+    },
+    lastUpdated: {
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW
+    }
+  },
+  {
+    tableName: 'LeaveBalances',
+    timestamps: true, // adds createdAt and updatedAt
+  });
+
+  // Define associations
+  LeaveBalance.associate = (models) => {
+    // Each LeaveBalance belongs to one User
+    LeaveBalance.belongsTo(models.User, {
+      foreignKey: 'userId',
+      as: 'employee',
+      onDelete: 'CASCADE'
+    });
+
+    // Each LeaveBalance belongs to a LeaveType (e.g. Annual, Sick)
+    LeaveBalance.belongsTo(models.LeaveType, {
+      foreignKey: 'leaveTypeId',
+      as: 'leaveType',
+      onDelete: 'CASCADE'
+    });
+  };
+
+  return LeaveBalance;
+};
+
     leaveTypeId: {
       type: DataTypes.INTEGER,
       allowNull: false,
