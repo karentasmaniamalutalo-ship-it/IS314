@@ -1,22 +1,95 @@
-const { LeaveBalance, LeaveType, User } = require('../models');
-const { Op } = require('sequelize');
+// ============================================================
+// utils/leaveBalance.js
+// Author: Karen (karen-branch)
+// Helper functions for Leave Balance Management
+// ============================================================
+
+const { LeaveBalance, User, LeaveType } = require('../models');
 
 /**
- * Get current financial year
- * Financial year runs from April 1 to March 31
+ * Get all leave balances for one employee
+ * @param {number} employeeId - ID of the employee
+ * @returns {Promise<Array>} List of leave balances
  */
-function getCurrentFinancialYear() {
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth() + 1; // January is 0
-  
-  // If month is January to March, financial year is previous year
-  // If month is April to December, financial year is current year
-  return currentMonth <= 3 ? currentYear - 1 : currentYear;
+async function getEmployeeLeaveBalance(employeeId) {
+  return await LeaveBalance.findAll({
+    where: { userId: employeeId },
+    include: [{ model: LeaveType, as: 'leaveType', attributes: ['name'] }],
+  });
 }
 
 /**
- * Get financial year start and end dates
+ *  Update an employee's leave balance
+ * @param {number} employeeId - The employee's ID
+ * @param {number} leaveTypeId - Type of leave to update
+ * @param {number} newBalance - New remaining balance
+ */
+async function updateEmployeeLeaveBalance(employeeId, leaveTypeId, newBalance) {
+  const balance = await LeaveBalance.findOne({
+    where: { userId: employeeId, leaveTypeId },
+  });
+
+  if (!balance) throw new Error('Leave balance record not found');
+
+  balance.remainingDays = newBalance;
+  await balance.save();
+  return balance;
+}
+
+/**
+ *  Process rollover for new financial year
+ * Resets balances and stores previous year data
+ */
+async function processFinancialYearRollover() {
+  const allBalances = await LeaveBalance.findAll();
+  let updated = 0;
+
+  for (const record of allBalances) {
+    record.previousYearDays = record.remainingDays;
+    record.remainingDays = record.defaultDays;
+    record.year = new Date().getFullYear();
+    await record.save();
+    updated++;
+  }
+
+  return { updated };
+}
+
+/**
+ *  Bulk initialize leave balances for all employees
+ * (Optional - use during setup or when a new employee joins)
+ */
+async function initializeEmployeeLeaveBalances() {
+  const employees = await User.findAll();
+  const leaveTypes = await LeaveType.findAll();
+  const year = new Date().getFullYear();
+
+  let created = 0;
+
+  for (const emp of employees) {
+    for (const type of leaveTypes) {
+      await LeaveBalance.findOrCreate({
+        where: { userId: emp.id, leaveTypeId: type.id, year },
+        defaults: {
+          remainingDays: type.defaultDays,
+          previousYearDays: 0,
+          defaultDays: type.defaultDays,
+        },
+      });
+      created++;
+    }
+  }
+
+  return { created };
+}
+
+module.exports = {
+  getEmployeeLeaveBalance,
+  updateEmployeeLeaveBalance,
+  processFinancialYearRollover,
+  initializeEmployeeLeaveBalances,
+};
+
  */
 function getFinancialYearDates(year) {
   return {
